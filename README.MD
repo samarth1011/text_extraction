@@ -108,11 +108,11 @@ Your project will be available at **http://127.0.0.1:8000/**
 ## 🎯 Notes
 - Ensure **Tesseract and Poppler** are installed correctly.
 - Run the project inside a **virtual environment**.
-- Check logs for troubleshooting errors.
+- I havent focued much on making good UI, I have I have gave more time in making apis which is available in shared postman collection.
 
 ---
 
 ## 👨‍💻 Contributors
-- **Samarth Godase** ([Your GitHub profile](https://github.com/samarth1011))
+- **Samarth Godase** ([GitHub profile](https://github.com/samarth1011))
 
 ---
