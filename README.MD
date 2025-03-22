@@ -105,10 +105,19 @@ Your project will be available at **http://127.0.0.1:8000/**
 
 ---
 
+## 🔐 Superadmin Login
+To access the Django admin panel and manage the database:
+
+- **URL:** `http://127.0.0.1:8000/admin/`
+- **Username:** `sam`
+- **Password:** `Pccoe123`
+
+---
+
 ## 🎯 Notes
 - Ensure **Tesseract and Poppler** are installed correctly.
 - Run the project inside a **virtual environment**.
-- I havent focued much on making good UI, I have I have gave more time in making apis which is available in shared postman collection.
+- I haven't focued much on making good UI, I have gave more time in making REST APIs which is available in shared postman collection.
 
 ---
 
