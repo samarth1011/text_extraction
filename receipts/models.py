@@ -9,6 +9,9 @@ class ReceiptFile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return f"{self.file_name} - {'Valid' if self.is_valid else 'Invalid'}"
+
 class Receipt(models.Model):
     purchased_at = models.DateTimeField(null=True, blank=True)
     merchant_name = models.CharField(max_length=255, null=True, blank=True)
@@ -16,3 +19,6 @@ class Receipt(models.Model):
     file_path = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Receipt from {self.merchant_name or 'Unknown'} - {self.total_amount or 'N/A'}"

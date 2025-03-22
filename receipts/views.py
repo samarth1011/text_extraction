@@ -1,5 +1,6 @@
 import os
 from django.conf import settings
+from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -17,6 +18,23 @@ import re
 from rest_framework import status
 from .models import ReceiptFile, Receipt
 
+from rest_framework import generics, filters
+from rest_framework.response import Response
+from rest_framework import status
+from django_filters.rest_framework import DjangoFilterBackend
+from .models import Receipt
+from .serializers import ReceiptSerializer
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+
+def home(request):
+    return render(request, 'index.html')
+
+
+@method_decorator(csrf_exempt, name='dispatch')
 class UploadReceiptView(APIView):
     def post(self, request):
         file = request.FILES.get('file')
@@ -42,6 +60,8 @@ class UploadReceiptView(APIView):
 
         return Response({'message': 'File uploaded successfully', 'file_id': receipt_file.id}, status=status.HTTP_201_CREATED)
 
+
+@method_decorator(csrf_exempt, name='dispatch')
 class ValidateReceiptView(APIView):
     def post(self, request):
         
@@ -68,8 +88,12 @@ class ValidateReceiptView(APIView):
         receipt_file.save()
 
         return Response({'message': 'File validated successfully', 'is_valid': receipt_file.is_valid}, status=status.HTTP_200_OK)
-    
+
+
+@method_decorator(csrf_exempt, name='dispatch')   
 class ProcessReceiptView(APIView):
+    file_path = r"C:\Users\sg33702\Downloads\assignment\receipt_processor\media\receipts\sample_receipt.pdf"
+    print(os.path.exists(file_path))  # Should print True if file exists
     def post(self, request):
         file_id = request.data.get('file_id')
 
@@ -129,3 +153,27 @@ class ProcessReceiptView(APIView):
     def extract_date(self, text):
         match = re.search(r'(\d{2}/\d{2}/\d{4})', text)
         return datetime.strptime(match.group(1), "%m/%d/%Y") if match else None
+    
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ReceiptListView(generics.ListCreateAPIView):
+    """List all receipts or create a new one"""
+    queryset = Receipt.objects.all()
+    serializer_class = ReceiptSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['merchant_name', 'purchased_at', 'total_amount']
+    search_fields = ['merchant_name']
+    ordering_fields = ['purchased_at', 'total_amount']
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ReceiptDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Retrieve, update, or delete a receipt"""
+    queryset = Receipt.objects.all()
+    serializer_class = ReceiptSerializer
+
+from django.http import JsonResponse
+from .models import Receipt
+
+def get_receipts(request):
+    receipts = Receipt.objects.all().values("id", "merchant_name", "total_amount", "purchased_at", "file_path")
+    return JsonResponse(list(receipts), safe=False)
