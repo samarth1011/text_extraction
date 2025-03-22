@@ -92,8 +92,6 @@ class ValidateReceiptView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')   
 class ProcessReceiptView(APIView):
-    file_path = r"C:\Users\sg33702\Downloads\assignment\receipt_processor\media\receipts\sample_receipt.pdf"
-    print(os.path.exists(file_path))  # Should print True if file exists
     def post(self, request):
         file_id = request.data.get('file_id')
 
@@ -110,13 +108,15 @@ class ProcessReceiptView(APIView):
 
         try:
             # Convert PDF to images
+            if not os.path.exists(receipt_file.file_path):
+                return Response({'error': 'File path does not exist'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
             images = convert_from_path(receipt_file.file_path)
+            extracted_text = "\n".join(pytesseract.image_to_string(img) for img in images)
 
-            extracted_text = ""
-            for img in images:
-                extracted_text += pytesseract.image_to_string(img)
+            print("Extracted Text:\n", extracted_text)
 
-            # Extract data using regex
+            # Extract details using regex
             merchant_name = self.extract_merchant_name(extracted_text)
             total_amount = self.extract_total_amount(extracted_text)
             purchased_at = self.extract_date(extracted_text)
@@ -134,27 +134,69 @@ class ProcessReceiptView(APIView):
 
             return Response({
                 'message': 'Receipt processed successfully',
-                'merchant_name': merchant_name,
-                'total_amount': total_amount,
-                'purchased_at': purchased_at
+                'merchant_name': merchant_name or "Unknown",
+                'total_amount': total_amount or 0.0,
+                'purchased_at': purchased_at.strftime("%Y-%m-%d") if purchased_at else "Unknown"
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def extract_merchant_name(self, text):
-        lines = text.split("\n")
-        return lines[0] if lines else "Unknown Merchant"
+        """Extracts the merchant name from the receipt text."""
+        lines = text.strip().split("\n")
+        
+        # Common irrelevant words at the top of receipts
+        ignore_keywords = ["total", "receipt", "invoice", "date", "tax", "amount", "payment", "transaction"]
+        
+        # Common merchant keywords (helps in filtering)
+        merchant_keywords = ["store", "shop", "supermarket", "mart", "inc", "ltd", "cafe", "bakery", "restaurant", "hotel", "market", "pharmacy"]
+        
+        for line in lines[:7]:  # Check only the first few lines
+            cleaned_line = re.sub(r"[^a-zA-Z0-9\s&.'-]", "", line).strip()  # Remove special characters except common name characters
 
+            if len(cleaned_line) > 3 and not any(word.lower() in cleaned_line.lower() for word in ignore_keywords):
+                # Check if the line contains store-related keywords or is in uppercase
+                if any(word.lower() in cleaned_line.lower() for word in merchant_keywords) or cleaned_line.isupper():
+                    return cleaned_line
+
+        return "Unknown Merchant"
+    
     def extract_total_amount(self, text):
-        match = re.search(r'Total\s*[:\s$]*([\d,]+\.\d{2})', text, re.IGNORECASE)
-        return float(match.group(1)) if match else None
+        """Extracts the total amount from the receipt text."""
+        total_patterns = [
+            r"Total\s*[:\s$]*([\d,]+\.\d{2})",  # Matches "Total: $929.98" or "Total Amount: 929.98"
+            r"Amount\s*[:\s$]*([\d,]+\.\d{2})",  # Matches "Amount: 299.99"
+            r"Grand Total\s*[:\s$]*([\d,]+\.\d{2})",  # Matches "Grand Total: 120.50"
+        ]
+
+        for pattern in total_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return float(match.group(1).replace(",", ""))  # Remove commas and convert to float
+
+        return None
 
     def extract_date(self, text):
-        match = re.search(r'(\d{2}/\d{2}/\d{4})', text)
-        return datetime.strptime(match.group(1), "%m/%d/%Y") if match else None
-    
+        """Extracts the purchase date from the receipt text."""
+        date_patterns = [
+            r"(\d{2}/\d{2}/\d{4})",  # Matches "03/22/2025"
+            r"(\d{4}-\d{2}-\d{2})",  # Matches "2025-03-22"
+            r"(\d{2} [A-Za-z]{3} \d{4})",  # Matches "22 Mar 2025"
+        ]
 
+        for pattern in date_patterns:
+            match = re.search(pattern, text)
+            if match:
+                try:
+                    return datetime.strptime(match.group(1), "%m/%d/%Y")
+                except ValueError:
+                    try:
+                        return datetime.strptime(match.group(1), "%Y-%m-%d")
+                    except ValueError:
+                        return datetime.strptime(match.group(1), "%d %b %Y")
+
+        return None
 @method_decorator(csrf_exempt, name='dispatch')
 class ReceiptListView(generics.ListCreateAPIView):
     """List all receipts or create a new one"""

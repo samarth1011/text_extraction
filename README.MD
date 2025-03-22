@@ -93,6 +93,17 @@ Your project will be available at **http://127.0.0.1:8000/**
 - **Response:** JSON list of stored receipts
 
 ---
+### **4️⃣ Get Stored Receipts**
+- **Endpoint:** `GET /api/receipts/1`
+- **Response:** JSON list of specific stored receipts
+
+---
+### **4️⃣ Get Stored Receipts**
+- **Endpoint:** `GET /api/receipts/?merchant_name=Amazon Store`
+- **Response:** Filter receipts name from merchant name
+
+---
+
 
 ## 🎨 Frontend UI
 - Uses **Bootstrap** for styling
